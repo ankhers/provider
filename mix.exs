@@ -1,17 +1,20 @@
 defmodule Provider.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+
   def project do
     [
       app: :provider,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
       compilers: extra_compilers() ++ Mix.compilers(),
       boundary: [externals_mode: :strict],
-      dialyzer: [plt_add_apps: [:mix]]
+      dialyzer: [plt_add_apps: [:mix]],
+      docs: docs()
     ]
   end
 
@@ -38,4 +41,13 @@ defmodule Provider.MixProject do
   end
 
   defp extra_compilers(), do: if(Mix.env() == :prod, do: [], else: [:boundary])
+
+  defp docs() do
+    [
+      main: "Provider",
+      extras: ["README.md", "LICENSE"],
+      source_url: "https://github.com/sasa1977/provider/",
+      source_ref: @version
+    ]
+  end
 end
