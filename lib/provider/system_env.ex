@@ -15,8 +15,7 @@ defmodule Provider.SystemEnv do
   def template(params) do
     params
     |> Enum.sort()
-    |> Enum.map(&param_entry/1)
-    |> Enum.join("\n")
+    |> Enum.map_join("\n", &param_entry/1)
   end
 
   defp param_entry({name, %{default: nil} = spec}) do
