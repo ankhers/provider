@@ -1,5 +1,9 @@
 # Provider
 
+[![hex.pm](https://img.shields.io/hexpm/v/provider.svg?style=flat-square)](https://hex.pm/packages/provider)
+[![hexdocs.pm](https://img.shields.io/badge/docs-latest-green.svg?style=flat-square)](https://hexdocs.pm/provider/)
+![Build Status](https://github.com/sasa1977/provider/workflows/provider/badge.svg)
+
 Provider is a library which helps managing the operator configuration of a system.
 
 The term operator configuration refers to the settings which have to be provided by the operator of the system before the system is started. Typical examples include database credentials (host, database name, login, password), http and https ports, 3rd party API keys, and such. On the other hand, things such as Ecto database adapter, or dev/test-only variations such as mocks, are not a part of operator configuration.
@@ -33,7 +37,7 @@ defmodule MySystem.MixProject do
 
   defp deps do
     [
-      {:provider, github: "verybigthings/provider"},
+      {:provider, "~> 0.1"},
       # ...
     ]
   end
@@ -106,10 +110,6 @@ end
 ```
 
 Invoke `MySystem.Config.template()` in prod Mix env to generate a .env template with all configuration parameters. The function will return a string which you can print to screen or save to a file.
-
-## Documentation
-
-Since this library is not currently published on hex, you need to build the documentation locally, or read the [moduledoc in source](https://github.com/VeryBigThings/provider/blob/master/lib/provider.ex#L2).
 
 ## Alternatives
 
