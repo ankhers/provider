@@ -1,15 +1,18 @@
-on: push
+name: "provider"
+
+on: [push, pull_request]
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
     env:
-      CACHE_VERSION: v1
+      CACHE_VERSION: v2
+
     steps:
       - uses: actions/checkout@v2
 
-      - uses: erlef/setup-beam@v1
+      - uses: erlef/setup-elixir@v1
         with:
           otp-version: 26.0
           elixir-version: 1.15.4
@@ -32,8 +35,7 @@ jobs:
             build-${{ env.CACHE_VERSION }}-${{ github.ref }}-
             build-${{ env.CACHE_VERSION }}-
 
-      - name: Fetch deps
-        run: mix deps.get
+      - run: mix deps.get
 
       - name: Compile project
         run: |
@@ -41,14 +43,8 @@ jobs:
           MIX_ENV=dev mix compile --warnings-as-errors
           MIX_ENV=prod mix compile --warnings-as-errors
 
-      - name: Run linter checks
-        run: mix credo list
-
-      - name: Check code format
-        run: mix format --check-formatted
-
-      - name: Run dialyzer
-        run: mix dialyzer
-
-      - name: Run tests
-        run: mix test
+      - run: mix format --check-formatted
+      - run: mix test
+      - run: mix docs
+      - run: MIX_ENV=test mix credo list
+      - run: mix dialyzer
