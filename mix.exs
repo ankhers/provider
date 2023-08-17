@@ -10,7 +10,8 @@ defmodule Provider.MixProject do
       deps: deps(),
       aliases: aliases(),
       compilers: extra_compilers() ++ Mix.compilers(),
-      boundary: [externals_mode: :strict]
+      boundary: [externals_mode: :strict],
+      dialyzer: [plt_add_apps: [:mix]]
     ]
   end
 
