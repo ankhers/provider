@@ -14,7 +14,8 @@ defmodule Provider.MixProject do
       compilers: extra_compilers() ++ Mix.compilers(),
       boundary: [externals_mode: :strict],
       dialyzer: [plt_add_apps: [:mix]],
-      docs: docs()
+      docs: docs(),
+      package: package()
     ]
   end
 
@@ -48,6 +49,15 @@ defmodule Provider.MixProject do
       extras: ["README.md", "LICENSE"],
       source_url: "https://github.com/sasa1977/provider/",
       source_ref: @version
+    ]
+  end
+
+  defp package() do
+    [
+      description: "Managing operator configuration",
+      maintainers: ["Saša Jurić"],
+      licenses: ["MIT"],
+      links: %{"Github" => "https://github.com/sasa1977/provider"}
     ]
   end
 end
