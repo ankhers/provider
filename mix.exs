@@ -46,7 +46,7 @@ defmodule Provider.MixProject do
   defp docs() do
     [
       main: "Provider",
-      extras: ["README.md", "LICENSE"],
+      extras: ["README.md", "LICENSE", "CHANGELOG.md"],
       source_url: "https://github.com/sasa1977/provider/",
       source_ref: @version
     ]
@@ -57,7 +57,11 @@ defmodule Provider.MixProject do
       description: "Managing operator configuration",
       maintainers: ["Saša Jurić"],
       licenses: ["MIT"],
-      links: %{"Github" => "https://github.com/sasa1977/provider"}
+      links: %{
+        "Github" => "https://github.com/sasa1977/provider",
+        "Changelog" =>
+          "https://hexdocs.pm/provider/changelog.html##{String.replace(@version, ".", "-")}"
+      }
     ]
   end
 end
