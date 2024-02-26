@@ -17,6 +17,6 @@ defmodule Provider.Cache do
   end
 
   defp impl do
-    Application.get_env(:provider, :cache) || Provider.Cache.ETS
+    Application.get_env(:provider, :cache, Provider.Cache.ETS)
   end
 end

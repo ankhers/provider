@@ -98,7 +98,7 @@ defmodule Provider do
   @type source :: module
   @type params :: %{param_name => param_spec}
   @type param_name :: atom
-  @type param_spec :: %{type: type, default: value}
+  @type param_spec :: %{optional(:source) => String.t(), type: type, default: value}
   @type type :: :string | :integer | :float | :boolean
   @type value :: String.t() | number | boolean | nil
   @type data :: %{param_name => value}
@@ -108,13 +108,13 @@ defmodule Provider do
   # ------------------------------------------------------------------------
 
   @doc "Retrieves all params according to the given specification."
-  @spec fetch_all(source, params) :: {:ok, data} | {:error, [String.t()]}
-  def fetch_all(source, params) do
+  @spec fetch_all(source, params, Keyword.t()) :: {:ok, data} | {:error, [String.t()]}
+  def fetch_all(source, params, opts) do
     types = Enum.into(params, %{}, fn {name, spec} -> {name, spec.type} end)
 
     data =
       params
-      |> Stream.zip(source.values(Map.keys(types)))
+      |> Stream.zip(source.values(params, opts))
       |> Enum.into(%{}, fn {{param, opts}, provided_value} ->
         value = if is_nil(provided_value), do: opts.default, else: provided_value
         {param, value}
@@ -124,8 +124,11 @@ defmodule Provider do
     |> Changeset.cast(data, Map.keys(types))
     |> Changeset.validate_required(Map.keys(types), message: "is missing")
     |> case do
-      %Changeset{valid?: true} = changeset -> {:ok, Changeset.apply_changes(changeset)}
-      %Changeset{valid?: false} = changeset -> {:error, changeset_error(source, changeset)}
+      %Changeset{valid?: true} = changeset ->
+        {:ok, Changeset.apply_changes(changeset)}
+
+      %Changeset{valid?: false} = changeset ->
+        {:error, changeset_error(source, params, changeset)}
     end
   end
 
@@ -133,7 +136,7 @@ defmodule Provider do
   # Private
   # ------------------------------------------------------------------------
 
-  defp changeset_error(source, changeset) do
+  defp changeset_error(source, params, changeset) do
     changeset
     |> Ecto.Changeset.traverse_errors(fn {msg, opts} ->
       Enum.reduce(
@@ -143,7 +146,7 @@ defmodule Provider do
       )
     end)
     |> Enum.flat_map(fn {key, errors} ->
-      Enum.map(errors, &"#{source.display_name(key)} #{&1}")
+      Enum.map(errors, &"#{source.display_name(key, params[key])} #{&1}")
     end)
     |> Enum.sort()
   end
@@ -153,10 +156,21 @@ defmodule Provider do
     spec =
       update_in(
         spec[:params],
-        fn params -> Enum.map(params, &normalize_param_spec(&1, Mix.env())) end
+        fn params ->
+          Enum.map(params, &normalize_param_spec(&1, Mix.env()))
+        end
       )
 
-    quote bind_quoted: [spec: spec] do
+    {source, opts} =
+      case Keyword.fetch!(spec, :source) do
+        {source, opts} -> {source, Macro.escape(opts, unquote: true)}
+        source -> {source, []}
+      end
+
+    spec =
+      update_in(spec[:source], fn _source -> source end)
+
+    quote bind_quoted: [spec: spec, opts: opts] do
       # Generate typespec mapping for each param
       typespecs =
         Enum.map(
@@ -185,17 +199,21 @@ defmodule Provider do
       @doc "Loads and validates all parameters, raising if some values are missing or invalid."
       @spec load!() :: :ok
       def load! do
+        source = unquote(Keyword.fetch!(spec, :source))
+        opts = unquote(opts)
+
         case Provider.fetch_all(
-               unquote(Keyword.fetch!(spec, :source)),
+               source,
                %{
                  unquote_splicing(quoted_params)
-               }
+               },
+               opts
              ) do
           {:ok, values} ->
             Enum.each(values, fn {k, v} -> Provider.Cache.set(__MODULE__, k, v) end)
 
           {:error, errors} ->
-            raise "Following OS env var errors were found:\n#{Enum.join(Enum.sort(errors), "\n")}"
+            raise "#{source} encountered errors loading values:\n#{Enum.join(Enum.sort(errors), "\n")}"
         end
 
         :ok
@@ -215,14 +233,10 @@ defmodule Provider do
                 value
 
               {:error, :not_found} ->
-                raise "#{unquote(Keyword.fetch!(spec, :source)).display_name(unquote(param_name))} is missing"
-            end
+                source = unquote(Keyword.fetch!(spec, :source))
 
-            # Provider.fetch_one!(
-            #   unquote(Keyword.fetch!(spec, :source)),
-            #   unquote(param_name),
-            #   unquote(param_spec)
-            # )
+                raise "#{source.display_name(unquote(param_name), unquote(param_spec))} is missing"
+            end
           end
         end
       )
@@ -230,7 +244,9 @@ defmodule Provider do
       @doc "Returns a template configuration file."
       @spec template :: String.t()
       def template do
-        unquote(Keyword.fetch!(spec, :source)).template(%{unquote_splicing(quoted_params)})
+        source = unquote(Keyword.fetch!(spec, :source))
+
+        source.template(%{unquote_splicing(quoted_params)})
       end
     end
   end
@@ -258,7 +274,9 @@ defmodule Provider do
       # context of the client module.
       |> Macro.escape(unquote: true)
 
-    {param_name, [type: Keyword.get(param_spec, :type, :string), default: default_value]}
+    {param_name,
+     Keyword.drop(param_spec, [:type, :default]) ++
+       [type: Keyword.get(param_spec, :type, :string), default: default_value]}
   end
 
   defmodule Source do
@@ -271,10 +289,12 @@ defmodule Provider do
     This function should return all values in the requested orders. For each param which is not
     available, `nil` should be returned.
     """
-    @callback values([Provider.param_name()]) :: [Provider.value()]
+    @callback values(Provider.params(), Keyword.t()) :: [
+                Provider.value()
+              ]
 
     @doc "Invoked to convert the param name to storage specific name."
-    @callback display_name(Provider.param_name()) :: String.t()
+    @callback display_name(Provider.param_name(), Provider.param_spec()) :: String.t()
 
     @doc "Invoked to create operator template."
     @callback template(Provider.params()) :: String.t()
