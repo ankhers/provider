@@ -21,7 +21,6 @@ defmodule Provider.MixProject do
 
   def application do
     [
-      mod: {Provider.Application, []},
       extra_applications: [:logger]
     ]
   end

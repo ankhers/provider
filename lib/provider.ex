@@ -182,6 +182,28 @@ defmodule Provider do
         |> Keyword.fetch!(:params)
         |> Enum.map(fn {name, spec} -> {name, quote(do: %{unquote_splicing(spec)})} end)
 
+      use GenServer
+
+      def start_link do
+        GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+      end
+
+      @impl GenServer
+      def init(:ok) do
+        Provider.Cache.new(__MODULE__)
+
+        load!()
+
+        {:ok, nil}
+      end
+
+      def child_spec(_arg) do
+        %{
+          id: __MODULE__,
+          start: {__MODULE__, :start_link, []}
+        }
+      end
+
       @doc "Loads and validates all parameters, raising if some values are missing or invalid."
       @spec load!() :: :ok
       def load! do
@@ -192,13 +214,13 @@ defmodule Provider do
                }
              ) do
           {:ok, values} ->
-            Enum.each(values, fn {k, v} -> Provider.Cache.set(__MODULE__, k, v) end)
+            Provider.Cache.set(__MODULE__, Enum.to_list(values))
+
+            :ok
 
           {:error, errors} ->
             raise "Following OS env var errors were found:\n#{Enum.join(Enum.sort(errors), "\n")}"
         end
-
-        :ok
       end
 
       # Generate getter for each param.
@@ -217,12 +239,6 @@ defmodule Provider do
               {:error, :not_found} ->
                 raise "#{unquote(Keyword.fetch!(spec, :source)).display_name(unquote(param_name))} is missing"
             end
-
-            # Provider.fetch_one!(
-            #   unquote(Keyword.fetch!(spec, :source)),
-            #   unquote(param_name),
-            #   unquote(param_spec)
-            # )
           end
         end
       )

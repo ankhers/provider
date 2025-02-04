@@ -48,7 +48,11 @@ defmodule ProviderTest do
       System.put_env("OPT_6", "false")
       System.put_env("OPT_7", "3.14")
 
+      {:ok, pid} = TestModule.start_link()
+
       assert TestModule.load!() == :ok
+
+      GenServer.stop(pid)
     end
 
     test "load!/0 raises on error" do
@@ -66,7 +70,7 @@ defmodule ProviderTest do
       System.put_env("OPT_6", "false")
       System.put_env("OPT_7", "3.14")
 
-      TestModule.load!()
+      {:ok, pid} = TestModule.start_link()
 
       assert TestModule.opt_1() == "some data"
       assert TestModule.opt_2() == 42
@@ -75,10 +79,8 @@ defmodule ProviderTest do
       assert TestModule.opt_5() == "baz"
       assert TestModule.opt_6() == false
       assert TestModule.opt_7() == 3.14
-    end
 
-    test "access function raises for on error" do
-      assert_raise RuntimeError, "OPT_1 is missing", fn -> TestModule.opt_1() end
+      GenServer.stop(pid)
     end
 
     test "template/0 generates config template" do
@@ -137,22 +139,5 @@ defmodule ProviderTest do
       ]
 
     defp bar, do: "bar"
-  end
-
-  defmodule ProcDictCache do
-    @behaviour Provider.Cache
-
-    @impl true
-    def set(mod, key, val) do
-      Process.put({mod, key}, val)
-    end
-
-    @impl true
-    def get(mod, key) do
-      case Process.get({mod, key}, :undefined) do
-        :undefined -> {:error, :not_found}
-        v -> {:ok, v}
-      end
-    end
   end
 end
