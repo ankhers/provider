@@ -184,6 +184,7 @@ defmodule Provider do
 
       use GenServer
 
+      @spec start_link(term()) :: GenServer.on_start()
       def start_link(arg) do
         GenServer.start_link(__MODULE__, arg, name: __MODULE__)
       end
@@ -223,13 +224,7 @@ defmodule Provider do
           # bug in credo spec check
           # credo:disable-for-next-line Credo.Check.Readability.Specs
           def unquote(param_name)() do
-            case Provider.Cache.get(__MODULE__, unquote(param_name)) do
-              {:ok, value} ->
-                value
-
-              {:error, :not_found} ->
-                raise "#{unquote(Keyword.fetch!(spec, :source)).display_name(unquote(param_name))} is missing"
-            end
+            Provider.Cache.get(__MODULE__, unquote(param_name))
           end
         end
       )
