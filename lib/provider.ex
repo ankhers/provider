@@ -184,24 +184,15 @@ defmodule Provider do
 
       use GenServer
 
-      def start_link do
-        GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+      def start_link(arg) do
+        GenServer.start_link(__MODULE__, arg, name: __MODULE__)
       end
 
       @impl GenServer
-      def init(:ok) do
+      def init(_arg) do
         Provider.Cache.new(__MODULE__)
-
         load!()
-
         {:ok, nil}
-      end
-
-      def child_spec(_arg) do
-        %{
-          id: __MODULE__,
-          start: {__MODULE__, :start_link, []}
-        }
       end
 
       @doc "Loads and validates all parameters, raising if some values are missing or invalid."
@@ -214,7 +205,7 @@ defmodule Provider do
                }
              ) do
           {:ok, values} ->
-            Provider.Cache.set(__MODULE__, Enum.to_list(values))
+            Provider.Cache.set(__MODULE__, Map.to_list(values))
 
             :ok
 

@@ -48,11 +48,9 @@ defmodule ProviderTest do
       System.put_env("OPT_6", "false")
       System.put_env("OPT_7", "3.14")
 
-      {:ok, pid} = TestModule.start_link()
+      start_config_server!()
 
       assert TestModule.load!() == :ok
-
-      GenServer.stop(pid)
     end
 
     test "load!/0 raises on error" do
@@ -70,7 +68,7 @@ defmodule ProviderTest do
       System.put_env("OPT_6", "false")
       System.put_env("OPT_7", "3.14")
 
-      {:ok, pid} = TestModule.start_link()
+      start_config_server!()
 
       assert TestModule.opt_1() == "some data"
       assert TestModule.opt_2() == 42
@@ -79,8 +77,6 @@ defmodule ProviderTest do
       assert TestModule.opt_5() == "baz"
       assert TestModule.opt_6() == false
       assert TestModule.opt_7() == 3.14
-
-      GenServer.stop(pid)
     end
 
     test "template/0 generates config template" do
@@ -118,6 +114,10 @@ defmodule ProviderTest do
   end
 
   defp error(param, message), do: "#{param.os_env_name} #{message}"
+
+  defp start_config_server! do
+    start_supervised!(TestModule, restart: :temporary)
+  end
 
   defmodule TestModule do
     baz = "baz"
