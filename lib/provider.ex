@@ -21,8 +21,7 @@ defmodule Provider do
 
   This will generate the following functions in the module:
 
-    - `fetch_all` - retrieves values of all parameters
-    - `validate!` - validates that all parameters are correctly provided
+    - `load!` - validates that all parameters are correctly provided and stores them in the cache
     - `db_host`, `db_name`, `db_pool_size`, ... - getter of each declared parameter
 
   ## Describing params
@@ -130,22 +129,6 @@ defmodule Provider do
     end
   end
 
-  @doc "Retrieves a single parameter."
-  @spec fetch_one(source, param_name, param_spec) :: {:ok, value} | {:error, [String.t()]}
-  def fetch_one(source, param_name, param_spec) do
-    with {:ok, map} <- fetch_all(source, %{param_name => param_spec}),
-         do: {:ok, Map.fetch!(map, param_name)}
-  end
-
-  @doc "Retrieves a single param, raising if the value is not available."
-  @spec fetch_one!(source, param_name, param_spec) :: value
-  def fetch_one!(source, param, param_spec) do
-    case fetch_one(source, param, param_spec) do
-      {:ok, value} -> value
-      {:error, errors} -> raise Enum.join(errors, ", ")
-    end
-  end
-
   # ------------------------------------------------------------------------
   # Private
   # ------------------------------------------------------------------------
@@ -199,25 +182,37 @@ defmodule Provider do
         |> Keyword.fetch!(:params)
         |> Enum.map(fn {name, spec} -> {name, quote(do: %{unquote_splicing(spec)})} end)
 
-      @doc "Retrieves all parameters."
-      @spec fetch_all :: {:ok, %{unquote_splicing(typespecs)}} | {:error, [String.t()]}
-      def fetch_all do
-        Provider.fetch_all(
-          unquote(Keyword.fetch!(spec, :source)),
+      use GenServer
 
-          # quoted_params is itself a keyword list, so we need to convert it into a map
-          %{unquote_splicing(quoted_params)}
-        )
+      @spec start_link(term()) :: GenServer.on_start()
+      def start_link(arg) do
+        GenServer.start_link(__MODULE__, arg, name: __MODULE__)
       end
 
-      @doc "Validates all parameters, raising if some values are missing or invalid."
-      @spec validate!() :: :ok
-      def validate! do
-        with {:error, errors} <- fetch_all() do
-          raise "Following OS env var errors were found:\n#{Enum.join(Enum.sort(errors), "\n")}"
-        end
+      @impl GenServer
+      def init(_arg) do
+        :ets.new(__MODULE__, [:named_table, {:read_concurrency, true}, :public])
+        load!()
+        {:ok, nil}
+      end
 
-        :ok
+      @doc "Loads and validates all parameters, raising if some values are missing or invalid."
+      @spec load!() :: :ok
+      def load! do
+        case Provider.fetch_all(
+               unquote(Keyword.fetch!(spec, :source)),
+               %{
+                 unquote_splicing(quoted_params)
+               }
+             ) do
+          {:ok, values} ->
+            :ets.insert(__MODULE__, Map.to_list(values))
+
+            :ok
+
+          {:error, errors} ->
+            raise "Following OS env var errors were found:\n#{Enum.join(Enum.sort(errors), "\n")}"
+        end
       end
 
       # Generate getter for each param.
@@ -229,11 +224,8 @@ defmodule Provider do
           # bug in credo spec check
           # credo:disable-for-next-line Credo.Check.Readability.Specs
           def unquote(param_name)() do
-            Provider.fetch_one!(
-              unquote(Keyword.fetch!(spec, :source)),
-              unquote(param_name),
-              unquote(param_spec)
-            )
+            [{unquote(param_name), value}] = :ets.lookup(__MODULE__, unquote(param_name))
+            value
           end
         end
       )
