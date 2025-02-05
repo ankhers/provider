@@ -191,7 +191,7 @@ defmodule Provider do
 
       @impl GenServer
       def init(_arg) do
-        Provider.Cache.new(__MODULE__)
+        :ets.new(__MODULE__, [:named_table, {:read_concurrency, true}, :public])
         load!()
         {:ok, nil}
       end
@@ -206,7 +206,7 @@ defmodule Provider do
                }
              ) do
           {:ok, values} ->
-            Provider.Cache.set(__MODULE__, Map.to_list(values))
+            :ets.insert(__MODULE__, Map.to_list(values))
 
             :ok
 
@@ -224,7 +224,8 @@ defmodule Provider do
           # bug in credo spec check
           # credo:disable-for-next-line Credo.Check.Readability.Specs
           def unquote(param_name)() do
-            Provider.Cache.get(__MODULE__, unquote(param_name))
+            [{unquote(param_name), value}] = :ets.lookup(__MODULE__, unquote(param_name))
+            value
           end
         end
       )
