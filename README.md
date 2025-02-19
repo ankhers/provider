@@ -97,16 +97,18 @@ defmodule MySystem.Repo do
     adapter: Ecto.Adapters.Postgres
 
   @impl Ecto.Repo
-  def init(_type, config) do
-    {:ok,
-      Keyword.merge(
-        config,
-        hostname: MySystem.Config.db_host(),
-        database_name: MySystem.Config.db_name(),
-        pool_size: MySystem.Config.db_pool_size(),
-        # ...
-      )
-    }
+  def init(context, config) do
+    Provider.ecto_config(MySystem.Config, context, fn ->
+      {:ok,
+        Keyword.merge(
+          config,
+          hostname: MySystem.Config.db_host(),
+          database_name: MySystem.Config.db_name(),
+          pool_size: MySystem.Config.db_pool_size(),
+          # ...
+        )
+      }
+    end)
   end
 end
 ```

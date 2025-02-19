@@ -102,6 +102,7 @@ defmodule Provider do
   @type type :: :string | :integer | :float | :boolean
   @type value :: String.t() | number | boolean | nil
   @type data :: %{param_name => value}
+  @type ecto_context :: :supervisor | :runtime
 
   # ------------------------------------------------------------------------
   # API
@@ -127,6 +128,19 @@ defmodule Provider do
       %Changeset{valid?: true} = changeset -> {:ok, Changeset.apply_changes(changeset)}
       %Changeset{valid?: false} = changeset -> {:error, changeset_error(source, changeset)}
     end
+  end
+
+  @spec ecto_config(module(), ecto_context(), (-> {:ok, Keyword.t()})) :: {:ok, Keyword.t()}
+  def ecto_config(mod, context, fun) do
+    mod.start_link(nil)
+
+    ret = fun.()
+
+    if context == :runtime do
+      GenServer.stop(mod)
+    end
+
+    ret
   end
 
   # ------------------------------------------------------------------------
