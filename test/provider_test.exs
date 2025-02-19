@@ -37,6 +37,48 @@ defmodule ProviderTest do
     end
   end
 
+  describe "ecto_config" do
+    test "starts and stops the server when the context is :runtime" do
+      System.put_env("OPT_1", "some data")
+      System.put_env("OPT_2", "42")
+      System.put_env("OPT_6", "false")
+      System.put_env("OPT_7", "3.14")
+
+      pid = Process.whereis(TestModule)
+      assert is_nil(pid)
+
+      config =
+        Provider.ecto_config(TestModule, :runtime, fn ->
+          {:ok, [hostname: TestModule.opt_1()]}
+        end)
+
+      assert {:ok, [hostname: "some data"]} = config
+
+      pid = Process.whereis(TestModule)
+      assert is_nil(pid)
+    end
+
+    test "starts but not stops the server when the context is :supervisor" do
+      System.put_env("OPT_1", "some data")
+      System.put_env("OPT_2", "42")
+      System.put_env("OPT_6", "false")
+      System.put_env("OPT_7", "3.14")
+
+      pid = Process.whereis(TestModule)
+      assert is_nil(pid)
+
+      config =
+        Provider.ecto_config(TestModule, :supervisor, fn ->
+          {:ok, [hostname: TestModule.opt_1()]}
+        end)
+
+      assert {:ok, [hostname: "some data"]} = config
+
+      pid = Process.whereis(TestModule)
+      assert not is_nil(pid)
+    end
+  end
+
   describe "generated module" do
     setup do
       Enum.each(1..7, &System.delete_env("OPT_#{&1}"))
