@@ -47,7 +47,7 @@ defmodule Provider.MixProject do
     [
       main: "Provider",
       extras: ["README.md", "LICENSE", "CHANGELOG.md"],
-      source_url: "https://github.com/sasa1977/provider/",
+      source_url: "https://github.com/ankhers/provider/",
       source_ref: @version
     ]
   end
@@ -58,7 +58,7 @@ defmodule Provider.MixProject do
       maintainers: ["Saša Jurić"],
       licenses: ["MIT"],
       links: %{
-        "Github" => "https://github.com/sasa1977/provider",
+        "Github" => "https://github.com/ankhers/provider",
         "Changelog" =>
           "https://hexdocs.pm/provider/changelog.html##{String.replace(@version, ".", "-")}"
       }
